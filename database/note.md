@@ -49,7 +49,7 @@ Performance Measures
 - Capacity
 - Access time: time ellapsed from read-write request to data transfer starting time
     - Seek time: arm moves to locate track
-    - rotational latency time: arm waits for disk rotation to locate sector
+    - rotational latency time: arm waits for platter rotation to locate sector
 - Data transfer rate
     - the rate at which data can be retrieved from or stored to the disk
     - Disk block: logical unit of storage allocation and retrieval
@@ -162,5 +162,51 @@ RAID Levels
         - For example, two error-correcting blocks Pk and Qk, are stored for the four logical blocks 4k, 4k+1, 4k+2, 4k+3 in a 6-disk system
         - error-correcting blocks are calculated using codes such as Reed-Solomon codes  
             ![RAID 6](imgs/chapter12/RAID_level_6.png)
+
+## Disk-Block Access
+
+Data are transferred between disk and main memory in units of blocks.
+
+Block Access Pattern:
+- Sequential access pattern: successive requests are for successive block numbers, which are on same track or adjacent tracks
+- Random access pattern: successive requests are for blocks that are randomly located on disk.
+
+Techniques to improve access speed by minimizing number of disk block (random) accesses:
+- Buffering
+    - blocks read from disk are temporarily stored in an in-memory buffer
+- Read-ahead
+    - when a block is accessed, consecutive blocks from the same track are also read into an in-memory buffer
+    - beneficial for sequential access pattern
+- Scheduling
+    - if requested blocks are on same cylinder: 
+        - without ordering the block requests, each block request might need to wait at most 1 full rotation to pass the head
+        - by ordering the block requests, the blocks will pass the head in order, such that all blocks can be accessed in just 1 full rotation
+    - if requested blocks are on different cylinder:
+        - without ordering the block requests each block request needs the arm to move outward/inward on the disk to find the track.  
+        - by ordering the block requests, more blocks can be accessed in a single arm outward/inward movement
+        - The goal is to minimize disk arm movement, one algorith to achieve such goal is called elevator algorithm
+    - Disk controller usually performs the task of reordering read requests
+- File Organization
+    - to organize blocks on a way that the data are expected to be accessed
+        - e.g. Files are expected to be accessed sequentially, so we store the blocks sequentially on disk as well
+    - large file might not have all the blocks stores sequentially
+        - instead, break the blocks into extents, each of which contains multiple blocks that are stored sequentially
+        - one seek is required for only one extent now
+        - the larger the extent size, the lower the cost from seek time
+    - Framentation:
+        - files are created and deleted, resulting in free fragmentation of free blocks on disk
+        - over time, blocks of a sequential file become scatterred all over the disk, thus demaging access time
+        - system to perform defragmentation to backup and store blocks and organize blocks contiguously for sequential files
+- Non-volatile write buffers
+    - without using the non-volatile random-access memory (NVRAM)
+        - data are written into disks directly
+        - slow
+        - in case of system crashes, database state might be inconsistent with the database updates in memory
+    - by using the NVRAM
+        - when a block write is requested, the disk controller writes the block into NVRAM and notifies the system that the write is completed. 
+        - fast: the controller can write data from NVRAM to disk in a way that minimizes arm movement
+            - database system only notifies a delay if the NVRAM is full
+        - in case of system crashes, any pending buffered writes in NVRAM are written back to the disk
+
 
 
