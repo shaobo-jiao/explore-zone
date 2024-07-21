@@ -1,5 +1,4 @@
 Database System Concepts Chatper 5: Storage & Indexing
-
 # Chapter 12: Physical Storage Systems
 
 ## Overview 
@@ -209,4 +208,100 @@ Techniques to improve access speed by minimizing number of disk block (random) a
         - in case of system crashes, any pending buffered writes in NVRAM are written back to the disk
 
 
+
+# Chapter 13: Data Storage Structures
+
+## File Organization
+
+### Conceptual Terms:
+Record:
+- record/row in a relation/table
+
+File:
+- A database is mapped into a number of different files that are maintained by the underlying operating system
+- A file is organized logically as a sequence of records.
+- Each file is logically partitioned into fixed-length storage units called blocks
+
+Block:
+- unit of both storage allocation and data transfer
+- a block may contain several records
+
+Assumptions:
+- no record is larger than a block (large date items, such as images, are discussed separately)
+- each record is entirely contained in a single block
+
+An example of a _Instructor_ record structure:
+- [ID] varchar(5)
+- [name] varchar(20)
+- [dept_name] nvarchar(20)
+- [salary] numeric(8,2)
+- assume each char occupies 1 byte, and numeric(8,2) occipies 8 bytes
+
+### File of Fixed-Length Records:
+Record Size:
+- each record contains a fixed size that sums up the maximum number of bytes that each attribute can hold
+- an _Instructor_ record thus contans 5 + 20 + 20 + 8 = 53 bytes
+
+Simple storation of records in a file
+- a file stores fixed-length records sequentially, with the first 53 bytes occipied by the first record, and so on
+- if a block cannot store the last record entirely, the remaining space is left blank, and the record is stored in the next block
+- number of records can be stored in a block = floor(Block Size / Record Size)
+
+Simple Deletion of records from a file:
+- approach 1: when a record is deleted, move all consecutive records ahead a record size to fill in the freed space: 
+    - many records moved, many additional block access  
+- approach 2: move only the last record of the file to the freed space: 
+    - only one records moved, but still an additional block access for the last record
+- approach 3: store address of the first record being deleted in the _file header_. 
+    the first record also stored address to the second record being deleted, and so on.
+    in this way, the deleted records form a linked list: header -> record A -> record B -> ...
+    - when a new record is deleted, point file header to the new record, and point the new record to the previous 1st record:
+        file header -> newly deleted record -> record A -> record B -> ...
+    - when a new record is inserted and there's free space pointed by the file header, 
+        it is inserted into the 1st freed space pointed by the file header, 
+        then the file header is updated to point to the second record. 
+    - when a new record is inserted and there's no space available, the new record is inserted to the end of the file.
+    ![Linked List of Freed Space from Deleted Records](imgs/chapter13/fixed-size-records-del-insertion.png)
+
+### File of Variable-Length Records:
+Variaty Illustration:
+- variable-length attributes of records: how to represent the record and extract attributes
+- variable-length records stored within a block: how to extract records
+
+Representation of Records with Variable-Length Attributes:
+- initial part (fixed-length information for all records):
+    - an offset-length pair is stored for each variable-length attribute
+        - offset denotes the byte position where the data begins in the record
+        - length denotes the number of types the attribute contains
+    - fixed-length attributes
+- data of variable-length attributes as referenced by the offset-length pairs in the _initial part_
+    ![Representation of Variable-Length Record](imgs/chapter13/variable-length-record.png)
+- additionaly, a null bitmap can represent presence of which attributes contains null data or not
+    
+Storing Variable-Length Records in a Block:
+- a Slotted-Page Structure is commonly used to store variable-length records in a block, where the block is partitioned into three areas:
+    - Block Header from the beginning of the block, which contains
+        - number of records in the block
+        - address of the end of free space
+        - an array whose entries contains the address and size of each record
+    - Free Space between the Header and Stored Records
+        - new records are inserted at the end of Free Space
+    - Stored Records:
+        - records are stored from the end of the block, with address and length info stored in the Header
+    ![Storing Variable-Length record in a block using slotted-page structure](imgs/chapter13/slotted-page-structure.png)
+- Insertion of records:
+    - initially there's no records stored in the block, Free Space starts from the end of the block
+    - a new record is inserted at the end of the block. Free Space shrinks. 
+        Block Header is updated accordingly, with number of records updated, address and length of the new record stored, and the end address of Free Space updated
+    - subsequent records are inserted consecutively at the end of Free Space. Block Header is updated accordingly
+- Deletion of records:
+    - All records stored "before" the deleted records (inserted after the record) are moved towards the end of block to occupy the freed space
+    - Free Space betwee the Header and Records thus expands 
+    - Block Header is updated accordingly.
+    - The cost of moving records is not high as the block size is small
+
+Storing Large Objects:
+- usually store as separate files in the file system, the record then stores an address of the file (e.g. file name or path)
+
+## Organization of Records in Files
 
